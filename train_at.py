@@ -217,14 +217,10 @@ if __name__ == "__main__":
 
     if torch.cuda.device_count() > 1:
         weak_and_syn_data_sampler = DistributedSampler(weak_and_syn_data)
-        val_data_sampler = DistributedSampler(val_data)
-        test_data_sampler = DistributedSampler(test_data)
-
-        train_sampler = BatchSampler(weak_and_syn_data_sampler, f_args.batch_size, drop_last=True)
-        val_sampler = BatchSampler(val_data_sampler, f_args.batch_size, drop_last=True)
-        test_sampler = BatchSampler(test_data_sampler, f_args.batch_size, drop_last=True)
-
-        train_loader = DataLoader(weak_and_syn_data, batch_size = f_args.batch_size, shuffle=(weak_and_syn_data_sampler is None), sampler = train_sampler, pin_memory=True)
+        val_data_sampler = DistributedSampler(val_data, shuffle = False)
+        test_data_sampler = DistributedSampler(test_data, shuffle = False)
+        
+        train_loader = DataLoader(weak_and_syn_data, batch_size = f_args.batch_size, shuffle=(weak_and_syn_data_sampler is None), sampler = weak_and_syn_data_sampler, pin_memory=True)
         val_loader = DataLoader(val_data, batch_size = f_args.batch_size, shuffle = False, drop_last=False, pin_memory=True)
         test_loader = DataLoader(test_data, batch_size = f_args.batch_size, shuffle = False, drop_last=False, pin_memory=True)
     else:
@@ -252,7 +248,7 @@ if __name__ == "__main__":
     for epoch in range(f_args.nepochs):
         model.train()
         if torch.cuda.device_count() > 1:
-            train_sampler.set_epoch(epoch)
+            weak_and_syn_data_sampler.set_epoch(epoch)
         train(model, train_loader, optim, epoch, f_args.grad_steps)
         lr_scheduler.step()
         model = model.eval()
