@@ -29,3 +29,10 @@ state = torch.load(model_path, map_location=torch.device("cpu") if not torch.cud
 280-283行 增加多GPU模式选项
 ```
 
+## 新增修改：
+
+```python
+218-226行 删除BatchSampler部分，删除val_loader和test_loader中的sampler参数，同时增加pin_memory=True参数
+251行 改成weak_and_syn_data_sampler.set_epoch(epoch)
+```
+
