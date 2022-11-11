@@ -36,3 +36,11 @@ state = torch.load(model_path, map_location=torch.device("cpu") if not torch.cud
 251行 改成weak_and_syn_data_sampler.set_epoch(epoch)
 ```
 
+# 11.11新增修改：
+
+```python
+140行 新加resume参数，内容为要加载的模型名称
+142行 把dataname的default值改为了dcase（这个可改可不改，命令行指定一下就行）
+249-259行 新增resume部分内容
+```
+

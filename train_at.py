@@ -137,8 +137,9 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", type=str, default='-1')
     parser.add_argument("--back_up", action="store_true", default=False)
     parser.add_argument("--fix_backbone", action="store_true", default=False)
+    parser.add_argument('--resume', default='backbone_resnet50_max_pretrained', help='resume training from specific model')
     # data param
-    parser.add_argument('--dataname', default='urbansed', choices=['urbansed', 'dcase'])
+    parser.add_argument('--dataname', default='dcase', choices=['urbansed', 'dcase'])
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
@@ -220,7 +221,7 @@ if __name__ == "__main__":
         val_data_sampler = DistributedSampler(val_data, shuffle = False)
         test_data_sampler = DistributedSampler(test_data, shuffle = False)
         
-        train_loader = DataLoader(weak_and_syn_data, batch_size = f_args.batch_size, shuffle=(weak_and_syn_data_sampler is None), sampler = weak_and_syn_data_sampler, pin_memory=True)
+        train_loader = DataLoader(weak_and_syn_data, batch_size = f_args.batch_size, shuffle=False, sampler = weak_and_syn_data_sampler, pin_memory=True)
         val_loader = DataLoader(val_data, batch_size = f_args.batch_size, shuffle = False, drop_last=False, pin_memory=True)
         test_loader = DataLoader(test_data, batch_size = f_args.batch_size, shuffle = False, drop_last=False, pin_memory=True)
     else:
@@ -238,13 +239,25 @@ if __name__ == "__main__":
     validation_labels_df = dfs["val"].drop("feature_filename", axis=1)
     test_labels_df = dfs["test"].drop("feature_filename", axis=1)
 
-
     optim = torch.optim.Adam(model.parameters(), lr=f_args.lr, betas=(0.9, 0.999), eps=1e-8, weight_decay=0,
                              amsgrad=True)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optim, f_args.lr_drop)
     best_saver = SaveBest("sup")
     # train
     state = {"model": model.state_dict(), "epoch": 0}
+
+    start_epoch = 0
+    if f_args.resume:
+        model_fname = os.path.join(model_dir, f_args.resume)
+        if torch.cuda.is_available():
+            state = torch.load(model_fname)
+        else:
+            state = torch.load(model_fname, map_location=torch.device('cpu'))
+        load_dict = state['model']
+        model.module.load_state_dict(load_dict)
+        start_epoch = state['epoch']
+        logger.info('Resume training form epoch {}'.format(state['epoch']))
+
     for epoch in range(f_args.nepochs):
         model.train()
         if torch.cuda.device_count() > 1:
